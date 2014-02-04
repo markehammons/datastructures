@@ -13,7 +13,7 @@ import org.scalacheck.Arbitrary.arbitrary
 
 object CuckooHashTests extends Properties("CuckooHashTable") {
 
-  val maxAvgLoad = 2.0
+  val maxAvgLoad = 1.7
 
   def getDistribution(xs: Traversable[Int]): Map[Int,Int] = (xs foldLeft Map[Int,Int]().withDefault(_ => 0)) {
     case (map, x) => map + (x -> (map(x) + 1))
@@ -24,7 +24,7 @@ object CuckooHashTests extends Properties("CuckooHashTable") {
   property("growth") = forAll { (l: List[Int]) =>
     val table = (l foldLeft CuckooHashTable[Int, Null]()) {case (table, str) => table.insert(str, null)}
 
-    l.forall(s => table.backing.contains((s,null)))
+    l.forall(s => table.backing1.contains((s,null)) || table.backing2.contains((s,null)))
   }
 
   property("retrieval") = forAll{ (ks: Set[Int], vs: Set[Int]) =>
@@ -43,7 +43,7 @@ object CuckooHashTests extends Properties("CuckooHashTable") {
     v.size / table.backing.size.toDouble >= .25 || v.size == 0
   }*/
 
-  property("hash1 distribution near normal?") = forAllNoShrink(arbitrary[Set[Int]] suchThat (_.size > 25))((xs) => {
+  /*property("hash1 distribution near normal?") = forAllNoShrink(arbitrary[Set[Int]] suchThat (_.size > 25))((xs) => {
     val len = xs.size
     val hashDistrib = getDistribution(xs.toList map (CuckooHashTable.hash1(_,len)))
 
@@ -79,5 +79,13 @@ object CuckooHashTests extends Properties("CuckooHashTable") {
       //println(s"mean distribution: $avg")
 
     mean < maxAvgLoad
+  })*/
+
+  property("HashTable load always > 30%") = forAll(arbitrary[List[Int]] suchThat (_.size > 1)) ((xs) => {
+    val table = (xs foldRight CuckooHashTable[Int, Null]) {
+      case (int, table) => table.insert(int, null)
+    }
+
+    table.size.toDouble / table.reserved * 2 > .3
   })
 }
